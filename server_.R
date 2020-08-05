@@ -9,18 +9,26 @@ server <- shinyServer(function(input, output, session) {
   
   output$walkChart <- renderPlotly({
     
+    drunks <- input$nDrunks
     steps <- input$nSteps
     seed <- input$seed
     height <- input$chartHeight
-    
+    policeAreBlind <- input$policeAreBlind
     policeMin <- input$policeMin
     policeConcentration <- input$policeConcentration
     
+    paths <- nDrunkPaths(drunks, steps)
     
-    path <- makeDrunkPath(steps)
-    police <- makePolice(path, policeMin, policeConcentration)
+    police <- makePolice(paths, policeMin, policeConcentration)
     
-    chart <- makeChart(path, height, police)
+    split <- catchDrunk(paths, police, policeAreBlind)
+
+    chart <- makeChart(
+        split$uncaught, 
+        split$residuals,
+        height, 
+        police
+    )
     
     chart
     

@@ -6,3 +6,4 @@ target
 .RData
 **/.Rhistory
 **/.Rapp.history
+rsconnect

@@ -3,36 +3,63 @@ library(dplyr)
 
 source("drunkFuncs.R")
 
-
 server <- shinyServer(function(input, output, session) {
   session$allowReconnect(TRUE)
   
-  output$walkChart <- renderPlotly({
-    
+  paths <- reactive({
     drunks <- input$nDrunks
     steps <- input$nSteps
     seed <- input$seed
-    height <- input$chartHeight
+    
+    p <- nDrunkPaths(drunks, steps)
+    
+    p
+  })
+  
+  pathsWithPolice <- reactive({
+    walks <- paths()
+    
     policeMin <- input$policeMin
+
     policeConcentration <- input$policeConcentration
-    finalOnly <- input$finalPositionOnly
+    
+    police <- makePolice(walks, policeMin, policeConcentration)
+    
+    list(paths = walks, police = police)
+  })
+  
+  pathsWithPoliceAction <- reactive({
+    pwp <- pathsWithPolice()
+    
     policeAreBlind <- input$policeAreBlind
     
-    paths <- nDrunkPaths(drunks, steps)
+    split <- catchDrunk(pwp$paths, pwp$police, policeAreBlind)
     
-    police <- makePolice(paths, policeMin, policeConcentration)
+    split
+  })
+  
+  
+  output$walkChart <- renderPlotly({
     
-    split <- catchDrunk(paths, police, policeAreBlind)
-
-    chart <- makeChart(
+    split <- pathsWithPoliceAction()
+    
+    height <- input$chartHeight
+    
+    finalOnly <- input$finalPositionOnly
+    
+    isolate({
+      pwp <- pathsWithPolice()
+      
+      chart <- makeChart(
         split$uncaught, 
         split$residuals,
         height, 
-        police, 
+        pwp$police, 
         finalOnly
-    )
-    
-    chart
+      )
+      
+      chart
+    })
     
   })
   

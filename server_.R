@@ -13,9 +13,10 @@ server <- shinyServer(function(input, output, session) {
     steps <- input$nSteps
     seed <- input$seed
     height <- input$chartHeight
-    policeAreBlind <- input$policeAreBlind
     policeMin <- input$policeMin
     policeConcentration <- input$policeConcentration
+    finalOnly <- input$finalPositionOnly
+    policeAreBlind <- input$policeAreBlind
     
     paths <- nDrunkPaths(drunks, steps)
     
@@ -27,7 +28,8 @@ server <- shinyServer(function(input, output, session) {
         split$uncaught, 
         split$residuals,
         height, 
-        police
+        police, 
+        finalOnly
     )
     
     chart

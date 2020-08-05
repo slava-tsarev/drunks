@@ -44,35 +44,59 @@ makeDrunkPath <- function(nSteps, drunkNum = 1) {
 makeChart <- function(uncaughtPaths, 
                       residualPaths = NULL, 
                       chartHeight = 600, 
-                      police = NULL) {
+                      police = NULL, 
+                      finalOnly = FALSE) {
 
   
   p0 <- plot_ly(type = "scatter", mode = "lines", height = chartHeight) 
   
-  for (up in unique(uncaughtPaths$n)) {
+  if (finalOnly) {
     
-    path = uncaughtPaths %>% filter(n == up)
+    finalPositions <- uncaughtPaths %>% 
+      group_by(n) %>%
+      filter(step == max(step)) %>%
+      ungroup()
     
-    p0 <- p0 %>% add_trace(
-      data = path, 
-      name = paste0("drunk ", up), 
-      x = ~x,  y = ~y, mode = "lines"
-    )
-  }
-  
-  for (re in unique(residualPaths$n)) {
-    
-    path = residualPaths %>% filter(n == re)
-    
-    p0 <- p0 %>% add_trace(
-      data = path, 
-      name = paste0("drunk ", re), 
-      x = ~x,  y = ~y, mode = "lines",
-      line = list(
-        width = 1, 
-        color = "lightgray"
+    for (fin in unique(finalPositions$n)) {
+      
+      path = finalPositions %>% filter(n == fin)
+      
+      p0 <- p0 %>% add_trace(
+        data = path, 
+        name = paste0("drunk ", fin), 
+        x = ~x,  y = ~y, 
+        mode = "markers", 
+        marker = list(size = 10)
       )
-    )
+    }
+    
+  } else {
+  
+    for (up in unique(uncaughtPaths$n)) {
+      
+      path = uncaughtPaths %>% filter(n == up)
+      
+      p0 <- p0 %>% add_trace(
+        data = path, 
+        name = paste0("drunk ", up), 
+        x = ~x,  y = ~y, mode = "lines"
+      )
+    }
+    
+    for (re in unique(residualPaths$n)) {
+      
+      path = residualPaths %>% filter(n == re)
+      
+      p0 <- p0 %>% add_trace(
+        data = path, 
+        name = paste0("drunk ", re), 
+        x = ~x,  y = ~y, mode = "lines",
+        line = list(
+          width = 1, 
+          color = "lightgray"
+        )
+      )
+    }
   }
   
   p1 <- if (!is.null(police)) {
@@ -83,7 +107,9 @@ makeChart <- function(uncaughtPaths,
         x = ~x, 
         y = ~y, 
         mode = "markers", 
-        marker = list(size = 10))
+        marker = list(size = 10, color = "gold", 
+                      symbol = "hexagram",
+                      line = list(width = 2, color = "DarkBlue")))
   } else p0
   
   p1

@@ -1,0 +1,8 @@
+target
+.idea
+*.iml
+*.Rproj
+.Rproj.user
+.RData
+**/.Rhistory
+**/.Rapp.history

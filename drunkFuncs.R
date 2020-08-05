@@ -25,17 +25,51 @@ makeDrunkPath <- function(nSteps) {
   dataset  
 }
 
-makeChart <- function(drunkPath, chartHeight) {
+makeChart <- function(drunkPath, chartHeight = 600, police = NULL) {
 
-  fig <- plot_ly(data = drunkPath, 
-                 x = ~x, 
-                 y = ~y,
-                 mode = "lines", 
-                 type = "scatter", 
-                 height = chartHeight
-        ) 
-  fig
+  p0 <- plot_ly(type = "scatter", mode = "lines", height = chartHeight) %>%
+    add_trace(data = drunkPath, name = "drunk", x = ~x,  y = ~y, mode = "lines") 
+  
+  p1 <- if (!is.null(police)) {
+    p0 %>% 
+      add_trace(
+        data = police, 
+        name = "police", 
+        x = ~x, 
+        y = ~y, 
+        mode = "markers", 
+        marker = list(size = 10))
+  } else p0
+  
+  p1
 }
+
+makePolice <- function(drunkPath, policeMin, policeConcentration) {
+
+  rX <- range(drunkPath$x) # array of min and max values
+  rY <- range(drunkPath$y)
+  
+  pathArea = (rX[2] - rX[1]) * (rY[2] - rY[1])
+  
+  nPolice <- round(max(policeMin, policeConcentration * pathArea))
+  
+  police <- tibble(
+    x = runif(nPolice, 
+              min = min(drunkPath$x),
+              max = max(drunkPath$x)
+    ),
+    y = runif(nPolice, 
+              min = min(drunkPath$y),
+              max = max(drunkPath$y)
+    )
+  )
+  
+  police
+
+}
+
+
+
 
 makeAll <- function(nSteps = 1000, seed = Sys.time()) {
   set.seed(seed)

@@ -13,9 +13,14 @@ server <- shinyServer(function(input, output, session) {
     seed <- input$seed
     height <- input$chartHeight
     
-    path <- makeDrunkPath(steps)
+    policeMin <- input$policeMin
+    policeConcentration <- input$policeConcentration
     
-    chart <- makeChart(path, height)
+    
+    path <- makeDrunkPath(steps)
+    police <- makePolice(path, policeMin, policeConcentration)
+    
+    chart <- makeChart(path, height, police)
     
     chart
     

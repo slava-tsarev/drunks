@@ -1,4 +1,18 @@
-nDrunkPaths <- function(drunks, steps) {
+library(dplyr)
+library(plotly)
+
+constructParam <- function(steps, drunks, policeMin, policeCnc, policeAreBlind) {
+  param <- list(
+    steps = steps, 
+    drunks = drunks,
+    policeMin = policeMin, 
+    policeCnc = policeCnc,
+    policeAreBlind = policeAreBlind
+  )
+  param
+}
+
+nDrunkPaths <- function(steps, drunks = 1) {
   result <- bind_rows(
     lapply(seq(1, drunks),
            FUN = function(i) {
@@ -40,6 +54,132 @@ makeDrunkPath <- function(nSteps, drunkNum = 1) {
   
   dataset  
 }
+
+makeTitle <- function(drunks, steps) {
+  paste0(
+    drunks, " drunks, ", 
+    steps, " steps"
+  )
+}
+
+makeStatsTitle <- function(run, police = TRUE) {
+  t <- makeTitle(run$param$drunks, run$param$steps)
+  if (police) {
+    paste0(
+      t, ", ",
+      nrow(run$police), " police (", 
+      run$param$policeCnc, " cnc)"
+    )
+  } else t
+}
+
+makeStats <- function(run)  {
+  
+  catchStatus <- run$split$catchStatus
+  
+  d0 <- catchStatus %>% 
+    mutate(caught = stepCaught > 0) %>%
+    arrange(stepCaught) %>%
+    mutate(caughtTotal = cumsum(caught)) %>%
+    mutate(uncaughtTotal = nrow(catchStatus) - caughtTotal) %>%
+    select(stepCaught, caughtTotal, uncaughtTotal) %>%
+    rename(step = stepCaught) %>%
+    unique()
+  
+  d0 %>% mutate(
+    runId = run$id, 
+    policeNum = nrow(run$police), 
+    policeCnc = run$param$policeCnc
+  )
+  
+}
+
+constructRun <- function(id, param, dp, police, split) {
+  run <- list(
+    id = id, 
+    param = param,
+    paths = dp,
+    police = police,
+    split = split
+  )
+  run  
+}
+
+makeRun <- function(param, id = 1) {
+  dp <- nDrunkPaths(param$steps, param$drunks)
+  police <- makePolice(dp, param$policeMin, param$policeCnc)
+  split <- catchDrunk(dp, police, param$policeAreBlind)
+  
+  constructRun(id, param, dp, police, split)
+}
+
+makeRunChart <- function(run, ...) {
+  makeChart(run$split$uncaught, run$split$residuals, police = run$police, ...)
+}
+
+makeStatsChart3D <- function(stats, title = NULL, height = 600) {
+  plot_ly(data = stats, 
+          z = ~caughtTotal, 
+          x = ~step,
+          y = ~policeCnc,
+          marker = list(
+            size = 3,
+            color = ~caughtTotal, 
+            colorscale = "reds", 
+            showscale = TRUE
+          ), 
+          mode = "markers",
+          type = "scatter3d",
+          height = height
+  ) %>% 
+    layout(title = title)
+}
+
+colorscale = c('#FFE1A1', '#683531')
+
+makeStatsChart <- function(stats, title = NULL, caught = TRUE, survived = FALSE, logX = FALSE, height = 600) {
+  
+  p <- plot_ly(type = "scatter", mode = "lines+markers", height = height) 
+  
+  for (id in unique(stats$runId)) {
+    
+    d <- stats %>% filter(runId == id)
+    
+    r <- head(d, 1)
+    cnc <- format(r$policeCnc, scientific = 1)
+    name <- paste0(r$policeNum, " (", cnc, ")")
+    
+    p <- p %>%
+      add_trace(data = d, 
+                name = name, 
+                legendgroup = "caught",
+                visible = if (caught) TRUE else "legendonly",
+                x = ~step, 
+                y = ~caughtTotal) %>%
+      add_trace(data = d, 
+                name = name, 
+                legendgroup = "survived",
+                visible = if (survived) TRUE else "legendonly",
+                x = ~step, 
+                y = ~uncaughtTotal)
+  }
+  
+  if (logX) {
+    p <- p %>% layout(xaxis = list(type = "log"))  
+  } 
+  
+  p <- p %>% layout(title = title)
+  
+  p
+}
+
+makeStatsAndChart <- function(run, ...) {
+  stats <- makeStats(run)
+  title <- makeStatsTitle(run)
+  
+  makeStatsChart(stats, title, ...)
+}
+
 
 makeChart <- function(uncaughtPaths, 
                       residualPaths = NULL, 
@@ -115,24 +255,49 @@ makeChart <- function(uncaughtPaths,
   p1
 }
 
-makePolice <- function(drunkPath, policeMin, policeConcentration) {
-
+getPathRange <- function(drunkPath) {
   rX <- range(drunkPath$x) # array of min and max values
   rY <- range(drunkPath$y)
   
-  pathArea = (rX[2] - rX[1]) * (rY[2] - rY[1])
+  list(rX = rX, rY = rY)
+}
+
+getPathArea <- function(pathRange) {
+  pathArea = (pathRange$rX[2] - pathRange$rX[1]) * 
+             (pathRange$rY[2] - pathRange$rY[1])
+  pathArea
+}
+
+calcNPolice <- function(area, policeMin, policeCnc) {
+  round(max(policeMin, policeCnc * area))
+}
+
+# draws first N police from pool
+drawPoliceFromPool <- function(policePool, nPolice) {
   
-  nPolice <- round(max(policeMin, policeConcentration * pathArea))
+  policePool %>% head(n = nPolice)
+  
+}
+
+makePolice <- function(drunkPath, policeMin, policeCnc) {
+
+  range <- getPathRange(drunkPath)
+  area <- getPathArea(range)
+  nPolice <- calcNPolice(area, policeMin, policeCnc)
   
   police <- tibble(
-    x = round(runif(nPolice, 
-              min = min(drunkPath$x),
-              max = max(drunkPath$x)
-    )),
-    y = round(runif(nPolice, 
-              min = min(drunkPath$y),
-              max = max(drunkPath$y)
-    ))
+    x = round(
+      runif(nPolice, 
+            min = range$rX[1],
+            max = range$rX[2]
+      )
+    ),
+    y = round(
+      runif(nPolice, 
+            min = min(range$rY[1]),
+            max = max(range$rY[2])
+      )
+    )
   )
   
   police
@@ -191,4 +356,35 @@ makeAll <- function(nSteps = 1000, seed = Sys.time()) {
   set.seed(seed)
   p0 <- makeDrunkPath(nSteps)
   makeChart(p0)
+}
+
+doMakeMultStats <- function(dp, policePool, area, param, policeCncs) {
+  multiple_run_stats <- bind_rows(
+    lapply(1:length(policeCncs), FUN = function(i) {
+      
+      p <- param
+      p$policeCnc <- policeCncs[i]
+      
+      nPolice <- calcNPolice(area, p$policeMin, p$policeCnc)
+      police <- drawPoliceFromPool(policePool, nPolice)
+      split <- catchDrunk(dp, police)
+      
+      run <- constructRun(id = i, param = p, dp = dp, police = police, split = split)
+      
+      makeStats(run)
+      
+    })
+  )
+  multiple_run_stats
+}
+
+makeMultStats <- function(param, policeCncs = c(0.01, 0.05)) {
+  
+  dp <- nDrunkPaths(param$steps, param$drunks)
+  
+  policePool <- makePolice(dp, param$policeMin, max(policeCncs)) # police pool 
+  
+  area <- getPathArea(getPathRange(dp))
+  
+  doMakeMultStats(dp, policePool, area, param, policeCncs)
 }

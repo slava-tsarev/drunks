@@ -6,14 +6,26 @@ source("drunkFuncs.R")
 server <- shinyServer(function(input, output, session) {
   session$allowReconnect(TRUE)
   
+  seedValue <- reactive({
+    input$seed
+  })
+  
+  observe({
+    s <- seedValue()
+    set.seed(s)
+  })
+  
   paths <- reactive({
     drunks <- input$nDrunks
     steps <- input$nSteps
-    seed <- input$seed
+    seed <- seedValue() # taking dependency
     
-    p <- nDrunkPaths(steps, drunks)
-    
-    p
+    isolate({
+      p <- nDrunkPaths(steps, drunks)
+      
+      p
+    })
+
   })
   
   pathsWithPolice <- reactive({
@@ -41,6 +53,8 @@ server <- shinyServer(function(input, output, session) {
   statsPaths <- reactive({
     steps <- input$statsNSteps
     drunks <- input$statsNDrunks
+    seed <- seedValue() # taking dependency
+    
     isolate({
       nDrunkPaths(steps, drunks)
     })
@@ -102,9 +116,11 @@ server <- shinyServer(function(input, output, session) {
     
     data <- statsData()
     height <- input$chartHeight
+    webGl <- input$useWebGl
     
     isolate({
-      makeStatsChart(data$stats, data$title, height = height)
+      p <- makeStatsChart(data$stats, data$title, height = height)
+      if (webGl) p %>% toWebGL() else p
     })
   })
   
@@ -112,9 +128,11 @@ server <- shinyServer(function(input, output, session) {
     
     data <- statsData()
     height <- input$chartHeight
+    webGl <- input$useWebGl
     
     isolate({
-      makeStatsChart3D(data$stats, data$title, height = height)
+      p <- makeStatsChart3D(data$stats, data$title, height = height)
+      if (webGl) p %>% toWebGL() else p
     })
   })
   
@@ -125,6 +143,8 @@ server <- shinyServer(function(input, output, session) {
     height <- input$chartHeight
     
     finalOnly <- input$finalPositionOnly
+    
+    webGl <- input$useWebGl
     
     isolate({
       pwp <- pathsWithPolice()
@@ -137,7 +157,8 @@ server <- shinyServer(function(input, output, session) {
         finalOnly
       )
       
-      chart
+      if (webGl) chart %>% toWebGL() else chart
+      
     })
     
   })

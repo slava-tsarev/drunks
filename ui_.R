@@ -32,7 +32,9 @@ ui <- dashboardPage(
     ),
     numericInput(inputId = "seed", label = "Seed", value = 19, min = 1, step = 1),
     numericInput(inputId = "chartHeight", label = "Chart Height, px", value = 630, min = 200, max = 5000, step = 50),
-    materialSwitch(inputId = "useWebGl", label = "Use WebGL", right = TRUE, value = FALSE, inline = FALSE)
+    conditionalPanel(condition = "(input.menu == 'walkTab') || (input.menu == 'statsTab')",
+      materialSwitch(inputId = "useWebGl", label = "Use WebGL", right = TRUE, value = FALSE, inline = FALSE)
+    )
   ),
   dashboardBody(
     tabItems(

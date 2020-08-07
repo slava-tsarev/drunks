@@ -137,11 +137,16 @@ server <- shinyServer(function(input, output, session) {
   })
   
   output$stats3DChart <- renderPlotly({
-    webGl <- input$useWebGl
+    
+    # currently webGL doesn't support scatter3d type of trace
+    # perhaps it can be migrated to surface3d 
+    
+    # webGl <- input$useWebGl
     chart <- stats3DChartPlotly()
     
     isolate({
-      if (webGl) chart %>% toWebGL() else chart
+      chart 
+      #if (webGl) chart %>% toWebGL() else chart
     })
   })
   

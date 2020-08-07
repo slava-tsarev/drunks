@@ -112,39 +112,45 @@ server <- shinyServer(function(input, output, session) {
     })
   })
   
-  output$statsChart <- renderPlotly({
-    
+  statsChartPlotly <- reactive({
     data <- statsData()
     height <- input$chartHeight
+    isolate({
+      makeStatsChart(data$stats, data$title, height = height)
+    })
+  })
+  
+  output$statsChart <- renderPlotly({
+    
     webGl <- input$useWebGl
+    chart <- statsChartPlotly()
     
     isolate({
-      p <- makeStatsChart(data$stats, data$title, height = height)
-      if (webGl) p %>% toWebGL() else p
+      if (webGl) chart %>% toWebGL() else chart
     })
+  })
+  
+  stats3DChartPlotly <- reactive({
+    data <- statsData()
+    height <- input$chartHeight
+    makeStatsChart3D(data$stats, data$title, height = height)
   })
   
   output$stats3DChart <- renderPlotly({
-    
-    data <- statsData()
-    height <- input$chartHeight
     webGl <- input$useWebGl
+    chart <- stats3DChartPlotly()
     
     isolate({
-      p <- makeStatsChart3D(data$stats, data$title, height = height)
-      if (webGl) p %>% toWebGL() else p
+      if (webGl) chart %>% toWebGL() else chart
     })
   })
   
-  output$walkChart <- renderPlotly({
-    
+  walkChartPlotly <- reactive({
     split <- pathsWithPoliceAction()
     
     height <- input$chartHeight
     
     finalOnly <- input$finalPositionOnly
-    
-    webGl <- input$useWebGl
     
     isolate({
       pwp <- pathsWithPolice()
@@ -157,10 +163,21 @@ server <- shinyServer(function(input, output, session) {
         finalOnly
       )
       
+      chart
+      
+    })
+  })
+  
+  output$walkChart <- renderPlotly({
+    
+    webGl <- input$useWebGl
+    chart <- walkChartPlotly()
+    
+    isolate({
+      
       if (webGl) chart %>% toWebGL() else chart
       
     })
-    
   })
   
 })

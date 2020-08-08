@@ -48,8 +48,8 @@ makeDrunkPath <- function(nSteps, drunkNum = 1) {
   dataset <- tibble(
     n = drunkNum, 
     step = seq(1, nSteps), 
-    x = x1, 
-    y = y1
+    x = as.integer(x1), 
+    y = as.integer(y1)
   )
   
   dataset  
@@ -180,13 +180,43 @@ makeStatsAndChart <- function(run, ...) {
   makeStatsChart(stats, title, ...)
 }
 
+addJitter <- function(d, jt) {
+  d %>% 
+    left_join(jt, by = "n") %>%
+    mutate(x = x + jt, y = y + jt) %>%
+    select(-jt)
+}
+
+applyJitter <- function(u, r) {
+  
+  n0 <- unique(u$n)
+  
+  n1 <- if (!is.null(r)) unique(r$n)
+  
+  n <- unique(c(n0, n1))
+  
+  jt <- tibble(n = n, jt = runif(length(n), -0.45, +0.45))
+
+  ur <- u %>% addJitter(jt)
+  
+  rr <- if (!is.null(r)) r %>% addJitter(jt) else NULL
+  
+  list(u = ur, r = rr)
+}
 
 makeChart <- function(uncaughtPaths, 
                       residualPaths = NULL, 
                       chartHeight = 600, 
                       police = NULL, 
-                      finalOnly = FALSE) {
-
+                      finalOnly = FALSE, 
+                      displayResiduals = TRUE, 
+                      jitter = FALSE) {
+  
+  if (jitter) {
+    r <- applyJitter(uncaughtPaths, residualPaths)
+    uncaughtPaths <- r$u
+    residualPaths <- r$r
+  }
   
   p0 <- plot_ly(type = "scatter", mode = "lines", height = chartHeight) 
   
@@ -211,6 +241,23 @@ makeChart <- function(uncaughtPaths,
     }
     
   } else {
+    
+    if (displayResiduals) {
+      for (re in unique(residualPaths$n)) {
+        
+        path = residualPaths %>% filter(n == re)
+        
+        p0 <- p0 %>% add_trace(
+          data = path, 
+          name = paste0("drunk ", re), 
+          x = ~x,  y = ~y, mode = "lines",
+          line = list(
+            width = 1, 
+            color = "lightgray"
+          )
+        )
+      }
+    }
   
     for (up in unique(uncaughtPaths$n)) {
       
@@ -219,24 +266,14 @@ makeChart <- function(uncaughtPaths,
       p0 <- p0 %>% add_trace(
         data = path, 
         name = paste0("drunk ", up), 
-        x = ~x,  y = ~y, mode = "lines"
-      )
-    }
-    
-    for (re in unique(residualPaths$n)) {
-      
-      path = residualPaths %>% filter(n == re)
-      
-      p0 <- p0 %>% add_trace(
-        data = path, 
-        name = paste0("drunk ", re), 
         x = ~x,  y = ~y, mode = "lines",
         line = list(
-          width = 1, 
-          color = "lightgray"
+          width = 1
         )
       )
     }
+    
+
   }
   
   p1 <- if (!is.null(police)) {
@@ -249,7 +286,7 @@ makeChart <- function(uncaughtPaths,
         mode = "markers", 
         marker = list(size = 10, color = "gold", 
                       symbol = "hexagram",
-                      line = list(width = 2, color = "DarkBlue")))
+                      line = list(width = 1, color = "DarkBlue")))
   } else p0
   
   p1
@@ -286,17 +323,21 @@ makePolice <- function(drunkPath, policeMin, policeCnc) {
   nPolice <- calcNPolice(area, policeMin, policeCnc)
   
   police <- tibble(
-    x = round(
-      runif(nPolice, 
-            min = range$rX[1],
-            max = range$rX[2]
-      )
+    x = as.integer(
+        round(
+          runif(nPolice, 
+              min = range$rX[1],
+              max = range$rX[2]
+          )
+        )
     ),
-    y = round(
-      runif(nPolice, 
+    y = as.integer(
+        round(
+          runif(nPolice, 
             min = min(range$rY[1]),
             max = max(range$rY[2])
-      )
+          )
+        )
     )
   )
   
@@ -307,7 +348,7 @@ makePolice <- function(drunkPath, policeMin, policeCnc) {
 # police is a tibble(x, y) 
 # paths is a tibble(n, step, x, y), where n is the number of drunk
 # returns a list of three tibbles (uncaught, residuals, catchStatus)
-catchDrunk <- function(paths, police, policeAreBlind = FALSE) {
+catchDrunk <- function(paths, police, policeAreBlind = FALSE, survivorsOnly = FALSE) {
   
   all_drunks <- unique(paths$n)
   no_catch <- tibble(n = all_drunks,  stepCaught = 0) 
@@ -335,11 +376,11 @@ catchDrunk <- function(paths, police, policeAreBlind = FALSE) {
   total <- paths %>% inner_join(catchStatus, by = "n") 
   
   uncaughtPaths <- total %>% 
-    filter(stepCaught == 0 | step <= stepCaught) %>%
+    filter(stepCaught == 0 | (!survivorsOnly & stepCaught > 0 & step <= stepCaught)) %>%
     select(n, step, x, y)
   
   residualPaths <- total %>% 
-    filter(stepCaught > 0 & step > stepCaught) %>%
+    filter(stepCaught > 0 & (survivorsOnly | step > stepCaught)) %>%
     select(n, step, x, y)
   
   result <- list(

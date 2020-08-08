@@ -21,8 +21,11 @@ ui <- dashboardPage(
       numericInput(inputId = "nSteps", label = "Steps", value = 5000, min = 1, step = 1),
       numericInput(inputId = "policeMin", label = "Police Min", value = 1, min = 0, step = 1),
       numericInput(inputId = "policeConcentration", label = "Police Concentration", value = 0.0005, min = 0, max = 1),
-      materialSwitch(inputId = "finalPositionOnly", label = "Show Final Position Only", right = TRUE, value = FALSE, inline = FALSE),
-      materialSwitch(inputId = "policeAreBlind", label = "Police Are Blind", right = TRUE, value = FALSE, inline = FALSE)
+      materialSwitch(inputId = "policeAreBlind", label = "Police Are Blind", right = TRUE, value = FALSE, inline = FALSE),
+      materialSwitch(inputId = "finalPositionOnly", label = "Final Position Only", right = TRUE, value = FALSE, inline = FALSE),
+      materialSwitch(inputId = "displayResiduals", label = "Residual Paths", right = TRUE, value = FALSE, inline = FALSE),
+      materialSwitch(inputId = "survivorsOnly", label = "Survivors Only", right = TRUE, value = FALSE, inline = FALSE),
+      materialSwitch(inputId = "jitter", label = "Visual Jitter", right = TRUE, value = TRUE, inline = FALSE),
     ),
     conditionalPanel(condition = "(input.menu == 'statsTab') || (input.menu == 'stats3DTab')",
       numericInput(inputId = "statsNDrunks", label = "Drunks", value = 100, min = 0, step = 1),

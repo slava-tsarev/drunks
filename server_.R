@@ -44,8 +44,9 @@ server <- shinyServer(function(input, output, session) {
     pwp <- pathsWithPolice()
     
     policeAreBlind <- input$policeAreBlind
+    survivorsOnly <- input$survivorsOnly
     
-    split <- catchDrunk(pwp$paths, pwp$police, policeAreBlind)
+    split <- catchDrunk(pwp$paths, pwp$police, policeAreBlind, survivorsOnly)
     
     split
   })
@@ -156,6 +157,8 @@ server <- shinyServer(function(input, output, session) {
     height <- input$chartHeight
     
     finalOnly <- input$finalPositionOnly
+    displayResiduals <- input$displayResiduals
+    jitter <- input$jitter
     
     isolate({
       pwp <- pathsWithPolice()
@@ -165,7 +168,9 @@ server <- shinyServer(function(input, output, session) {
         split$residuals,
         height, 
         pwp$police, 
-        finalOnly
+        finalOnly,
+        displayResiduals,
+        jitter
       )
       
       chart

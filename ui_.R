@@ -24,7 +24,7 @@ ui <- dashboardPage(
       materialSwitch(inputId = "policeAreBlind", label = "Police Are Blind", right = TRUE, value = FALSE, inline = FALSE),
       materialSwitch(inputId = "finalPositionOnly", label = "Final Position Only", right = TRUE, value = FALSE, inline = FALSE),
       materialSwitch(inputId = "displayResiduals", label = "Residual Paths", right = TRUE, value = FALSE, inline = FALSE),
-      materialSwitch(inputId = "survivorsOnly", label = "Survivors Only", right = TRUE, value = FALSE, inline = FALSE),
+      materialSwitch(inputId = "survivorsOnly", label = "Survivors Only", right = TRUE, value = TRUE, inline = FALSE),
       materialSwitch(inputId = "jitter", label = "Visual Jitter", right = TRUE, value = TRUE, inline = FALSE),
     ),
     conditionalPanel(condition = "(input.menu == 'statsTab') || (input.menu == 'stats3DTab')",

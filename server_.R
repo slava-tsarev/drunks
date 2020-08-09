@@ -21,7 +21,7 @@ server <- shinyServer(function(input, output, session) {
     seed <- seedValue() # taking dependency
     
     isolate({
-      p <- nDrunkPaths(steps, drunks)
+      p <- makeDrunkPath(steps, drunks)
       
       p
     })
@@ -57,7 +57,7 @@ server <- shinyServer(function(input, output, session) {
     seed <- seedValue() # taking dependency
     
     isolate({
-      nDrunkPaths(steps, drunks)
+      makeDrunkPath(steps, drunks)
     })
   })
   

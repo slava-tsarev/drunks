@@ -1,5 +1,8 @@
 library(dplyr)
+library(tidyr)
 library(plotly)
+library(data.table)
+library(futile.logger)
 
 constructParam <- function(steps, drunks, policeMin, policeCnc, policeAreBlind) {
   param <- list(
@@ -12,47 +15,35 @@ constructParam <- function(steps, drunks, policeMin, policeCnc, policeAreBlind) 
   param
 }
 
-nDrunkPaths <- function(steps, drunks = 1) {
-  result <- bind_rows(
-    lapply(seq(1, drunks),
-           FUN = function(i) {
-             makeDrunkPath(nSteps = steps, drunkNum = i)
-           }
-    )
-  )
-  result
-}
-
 # returns tibble(x, y) where n-th line is the drunk's location after n-th step
-makeDrunkPath <- function(nSteps, drunkNum = 1) {
+ makeDrunkPath <- function(nSteps, nDrunks = 1L) {
   
-  # uniformly distributed between 0 and 100
-  s0 <- runif(nSteps, 0, 100)
+   s0 = as.integer(round(runif(nDrunks * nSteps, min = -0.5, max = 3.5)))
+   
+   x0 = rep(0L, length(s0))
+   y0 = rep(0L, length(s0))
+   
+   x0[s0 == 0L] <-  1L
+   x0[s0 == 1L] <- -1L
+   y0[s0 == 2L] <-  1L
+   y0[s0 == 3L] <- -1L
+   
+   f1 <- 1L + (0L:(nDrunks-1L)) * nSteps
+   
+   x0[f1] <- 0L
+   y0[f1] <- 0L
+
+   d0 <- tidyr::expand_grid (
+     n = 1:nDrunks,
+     step = 1:nSteps,
+   ) 
+
+   # cumsum is faster with data.table
+   dt0 <- data.table(n = d0$n, x1 = x0, y1 = y0)
+   dt0[, x := cumsum(x1), by = n]
+   dt0[, y := cumsum(y1), by = n]
   
-  # 0 = right, 1 = left, 2 = up, 3 = down
-  s1 <- ifelse(s0 < 25, 0, 
-               ifelse(s0 >= 25 & s0 < 50, 1, 
-                      ifelse(s0 >= 50 & s0 < 75, 2, 3)))
-  
-  # coordinate increments
-  x0 <- ifelse(s1 == 0, 1, 
-               ifelse(s1 == 1, -1, 0))
-  
-  y0 <- ifelse(s1 == 2, 1, 
-               ifelse(s1 == 3, -1, 0))
-  
-  # absolute coordinates
-  x1 <- cumsum(x0)
-  y1 <- cumsum(y0)
-  
-  dataset <- tibble(
-    n = drunkNum, 
-    step = seq(1, nSteps), 
-    x = as.integer(x1), 
-    y = as.integer(y1)
-  )
-  
-  dataset  
+   d0 %>% mutate(x = dt0$x, y = dt0$y)
 }
 
 makeTitle <- function(drunks, steps) {
@@ -106,7 +97,7 @@ constructRun <- function(id, param, dp, police, split) {
 }
 
 makeRun <- function(param, id = 1) {
-  dp <- nDrunkPaths(param$steps, param$drunks)
+  dp <- makeDrunkPath(param$steps, param$drunks)
   police <- makePolice(dp, param$policeMin, param$policeCnc)
   split <- catchDrunk(dp, police, param$policeAreBlind)
   
@@ -421,7 +412,7 @@ doMakeMultStats <- function(dp, policePool, area, param, policeCncs) {
 
 makeMultStats <- function(param, policeCncs = c(0.01, 0.05)) {
   
-  dp <- nDrunkPaths(param$steps, param$drunks)
+  dp <- makeDrunkPath(param$steps, param$drunks)
   
   policePool <- makePolice(dp, param$policeMin, max(policeCncs)) # police pool 
   
